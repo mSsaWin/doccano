@@ -9,7 +9,6 @@ ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN apt-get update \
  && apt-get install -y --no-install-recommends git python3 make g++ ca-certificates \
  && git config --global url."https://github.com/".insteadOf git://github.com/ \
- && npm install -g yarn@1.22.19 \
  && yarn install --network-timeout 1000000 --frozen-lockfile \
  && yarn build \
  && apt-get clean \
