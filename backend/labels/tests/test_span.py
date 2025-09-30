@@ -220,7 +220,8 @@ class TestLabelDistribution(TestCase):
         distribution = Span.objects.calc_label_distribution(
             examples=self.project.item.examples.all(), members=self.project.members, labels=SpanType.objects.all()
         )
-        expected = {user.username: {label.text: 0 for label in SpanType.objects.all()} for user in self.project.members}
+        # After optimization: distribution only contains actually used labels, not all labels with zeros
+        expected = {user.username: {} for user in self.project.members}
         expected[self.user.username][label_a.text] = 1
         expected[self.user.username][label_b.text] = 1
         self.assertEqual(distribution, expected)

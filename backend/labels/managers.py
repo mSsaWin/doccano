@@ -10,7 +10,7 @@ class LabelManager(Manager):
         Args:
             examples: example queryset.
             members: user queryset.
-            labels: label queryset.
+            labels: label queryset (not used anymore, kept for API compatibility).
 
         Returns:
             label distribution per user.
@@ -19,17 +19,24 @@ class LabelManager(Manager):
             >>> self.calc_label_distribution(examples, members, labels)
             {'admin': {'positive': 10, 'negative': 5}}
         """
-        distribution = {member.username: {label.text: 0 for label in labels} for member in members}
+        # Initialize distribution with only members (no pre-populated labels)
+        # This avoids creating 18k+ zero-value entries per user
+        distribution = {member.username: {} for member in members}
+        
+        # Get actual label usage from the database
         items = (
             self.filter(example_id__in=examples)
             .values("user__username", f"{self.label_type_field}__text")
             .annotate(count=Count(f"{self.label_type_field}__text"))
         )
+        
+        # Only add labels that are actually used
         for item in items:
             username = item["user__username"]
             label = item[f"{self.label_type_field}__text"]
             count = item["count"]
             distribution[username][label] = count
+        
         return distribution
 
     def get_labels(self, label, project):
