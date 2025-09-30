@@ -4,7 +4,9 @@ name: doccano-prod
 services:
 
   backend:
-    image: doccano/doccano:backend
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.prod
     volumes:
       - static_volume:/backend/staticfiles
       - media:/backend/media
@@ -27,7 +29,9 @@ services:
       - network-frontend
 
   celery:
-    image: doccano/doccano:backend
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.prod
     volumes:
       - media:/backend/media
       - tmp_file:/backend/filepond-temp-uploads
@@ -44,7 +48,9 @@ services:
       - network-backend
 
   flower:
-    image: doccano/doccano:backend
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.prod
     entrypoint: ["/opt/bin/prod-flower.sh"]
     environment:
       PYTHONUNBUFFERED: "1"
@@ -71,7 +77,9 @@ services:
       - network-backend
 
   nginx:
-    image: doccano/doccano:frontend
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.nginx
     command: >
       /bin/sh -c
       "envsubst '
