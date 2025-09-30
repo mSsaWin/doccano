@@ -213,6 +213,18 @@ export default {
   },
 
   methods: {
+    // Helper to deduplicate labels by ID
+    deduplicateLabels(labels) {
+      const seen = new Set()
+      return labels.filter(label => {
+        if (seen.has(label.id)) {
+          return false
+        }
+        seen.add(label.id)
+        return true
+      })
+    },
+
     async loadPopularLabels() {
       try {
         // Load only popular labels (top 200 most used)
@@ -227,14 +239,14 @@ export default {
             this.$services.spanType.list(this.projectId, { limit: 200 }),
             this.$services.relationType.list(this.projectId, { limit: 200 })
           ])
-          this.spanTypes = spanTypes
-          this.relationTypes = relationTypes
+          this.spanTypes = this.deduplicateLabels(spanTypes)
+          this.relationTypes = this.deduplicateLabels(relationTypes)
         } else {
-          this.spanTypes = popularSpanTypes.length > 0 ? 
-          popularSpanTypes : await this.$services.spanType.list(this.projectId, { limit: 200 })
-          this.relationTypes = popularRelationTypes.length > 0 ? 
+          this.spanTypes = this.deduplicateLabels(popularSpanTypes.length > 0 ? 
+          popularSpanTypes : await this.$services.spanType.list(this.projectId, { limit: 200 }))
+          this.relationTypes = this.deduplicateLabels(popularRelationTypes.length > 0 ? 
           popularRelationTypes : 
-          await this.$services.relationType.list(this.projectId, { limit: 200 })
+          await this.$services.relationType.list(this.projectId, { limit: 200 }))
         }
       } catch (e) {
         console.error('Failed to load labels', e)
@@ -244,8 +256,8 @@ export default {
             this.$services.spanType.list(this.projectId, { limit: 200 }),
             this.$services.relationType.list(this.projectId, { limit: 200 })
           ])
-          this.spanTypes = spanTypes
-          this.relationTypes = relationTypes
+          this.spanTypes = this.deduplicateLabels(spanTypes)
+          this.relationTypes = this.deduplicateLabels(relationTypes)
         } catch (fallbackError) {
           console.error('Fallback also failed', fallbackError)
           this.spanTypes = []
@@ -257,16 +269,19 @@ export default {
     async maybeFetchSpanTypes(annotations) {
       // If we encounter a label that's not in our popular list, fetch it individually
       const labelIds = new Set(this.spanTypes.map((label) => label.id))
-      const missingLabelIds = annotations
+      const missingLabelIds = [...new Set(annotations
         .map(item => item.label)
-        .filter(id => !labelIds.has(id))
+        .filter(id => !labelIds.has(id)))]
       
       if (missingLabelIds.length > 0) {
         // Fetch only the missing labels, not all labels
         for (const labelId of missingLabelIds) {
           try {
             const label = await this.$services.spanType.findById(this.projectId, labelId)
-            this.spanTypes.push(label)
+            // Double-check to prevent race condition duplicates
+            if (!this.spanTypes.some(l => l.id === labelId)) {
+              this.spanTypes.push(label)
+            }
           } catch (e) {
             console.warn(`Failed to fetch label ${labelId}`, e)
           }

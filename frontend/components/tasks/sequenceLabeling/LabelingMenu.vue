@@ -13,6 +13,31 @@
         />
       </v-list-item>
       <v-divider />
+      <!-- Current selected label section -->
+      <template v-if="selectedLabel">
+        <v-subheader>Текущая метка</v-subheader>
+        <v-list-item @click="onLabelDeleted">
+          <v-list-item-action v-if="hasAnySuffixKey">
+            <v-chip
+              v-if="selectedLabel.suffixKey"
+              :color="selectedLabel.backgroundColor"
+              outlined
+              small
+              v-text="selectedLabel.suffixKey"
+            />
+            <span v-else class="mr-8" />
+          </v-list-item-action>
+          <v-list-item-content>
+            <v-list-item-title>
+              <span v-text="selectedLabel.text" />
+            </v-list-item-title>
+          </v-list-item-content>
+          <v-list-item-icon>
+            <v-icon color="error" small>{{ mdiDelete }}</v-icon>
+          </v-list-item-icon>
+        </v-list-item>
+        <v-divider />
+      </template>
       <template v-if="showNoResults">
         <v-subheader>Результаты поиска</v-subheader>
         <v-list-item>
@@ -24,8 +49,8 @@
       <template v-else-if="displayedListLabels.length > 0">
         <v-subheader>{{ searchQuery ? 'Результаты поиска' : 'Быстрый выбор' }}</v-subheader>
         <v-list-item
-          v-for="(label, i) in displayedListLabels"
-          :key="i"
+          v-for="label in displayedListLabels"
+          :key="label.id"
           @click="onLabelSelected(label.id)"
         >
           <v-list-item-action v-if="hasAnySuffixKey">
@@ -48,6 +73,7 @@
 </template>
 
 <script lang="ts">
+import { mdiDelete } from '@mdi/js'
 import Vue from 'vue'
 export default Vue.extend({
   props: {
@@ -98,7 +124,8 @@ export default Vue.extend({
       searchQuery: '',
       searchResults: [] as any[],
       isSearching: false,
-      searchTimeout: null as any
+      searchTimeout: null as any,
+      mdiDelete
     }
   },
 
@@ -148,6 +175,11 @@ export default Vue.extend({
 
     onLabelSelected(labelId: number) {
       this.$emit('click:label', labelId)
+      this.close()
+    },
+
+    onLabelDeleted() {
+      this.$emit('click:label', null)
       this.close()
     },
 
