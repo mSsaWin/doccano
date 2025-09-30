@@ -5,7 +5,7 @@ axios.defaults.xsrfHeaderName = 'X-CSRFToken'
 class ApiService {
   constructor() {
     this.instance = axios.create({
-      baseURL: process.env.API_URL + process.env.baseUrl
+      baseURL: (process.env.API_URL || '') + process.env.baseUrl
     })
     
     // Add request interceptor to include auth token
