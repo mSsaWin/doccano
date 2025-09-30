@@ -28,6 +28,9 @@
             :grapheme-mode="project.enableGraphemeMode"
             :selected-label="selectedLabel"
             :relation-mode="relationMode"
+            :project-id="projectId"
+            :label-service="$services.spanType"
+            :relation-label-service="$services.relationType"
             @addEntity="addSpan"
             @addRelation="addRelation"
             @click:entity="updateSpan"
@@ -183,18 +186,17 @@ export default {
     },
 
     labelTypes() {
-      if (this.relationMode) {
-        return this.relationTypes
-      } else {
-        return this.spanTypes
-      }
+      const types = this.relationMode ? this.relationTypes : this.spanTypes
+      // Show only top 50 labels in sidebar to avoid DOM overload
+      // User can still search for and use all labels via LabelingMenu
+      return types.slice(0, 50)
     }
   },
 
   watch: {
     '$route.query': '$fetch',
     async enableAutoLabeling(val) {
-      if (val && !this.doc.isConfirmed) {
+      if (val && this.doc && this.doc.id && !this.doc.isConfirmed) {
         await this.autoLabel(this.doc.id)
         await this.list(this.doc.id)
       }
@@ -202,17 +204,73 @@ export default {
   },
 
   async created() {
-    this.spanTypes = await this.$services.spanType.list(this.projectId)
-    this.relationTypes = await this.$services.relationType.list(this.projectId)
+    // Load project and progress first
     this.project = await this.$services.project.findById(this.projectId)
     this.progress = await this.$repositories.metrics.fetchMyProgress(this.projectId)
+    
+    // Load ONLY popular labels - no background loading of all labels
+    await this.loadPopularLabels()
   },
 
   methods: {
+    async loadPopularLabels() {
+      try {
+        // Load only popular labels (top 200 most used)
+        const [popularSpanTypes, popularRelationTypes] = await Promise.all([
+          this.$services.spanType.listPopular(this.projectId, 200),
+          this.$services.relationType.listPopular(this.projectId, 200)
+        ])
+        
+        // If popular labels are empty, load first page instead
+        if (popularSpanTypes.length === 0 && popularRelationTypes.length === 0) {
+          const [spanTypes, relationTypes] = await Promise.all([
+            this.$services.spanType.list(this.projectId, { limit: 200 }),
+            this.$services.relationType.list(this.projectId, { limit: 200 })
+          ])
+          this.spanTypes = spanTypes
+          this.relationTypes = relationTypes
+        } else {
+          this.spanTypes = popularSpanTypes.length > 0 ? 
+          popularSpanTypes : await this.$services.spanType.list(this.projectId, { limit: 200 })
+          this.relationTypes = popularRelationTypes.length > 0 ? 
+          popularRelationTypes : 
+          await this.$services.relationType.list(this.projectId, { limit: 200 })
+        }
+      } catch (e) {
+        console.error('Failed to load labels', e)
+        // Fallback: load first page only
+        try {
+          const [spanTypes, relationTypes] = await Promise.all([
+            this.$services.spanType.list(this.projectId, { limit: 200 }),
+            this.$services.relationType.list(this.projectId, { limit: 200 })
+          ])
+          this.spanTypes = spanTypes
+          this.relationTypes = relationTypes
+        } catch (fallbackError) {
+          console.error('Fallback also failed', fallbackError)
+          this.spanTypes = []
+          this.relationTypes = []
+        }
+      }
+    },
+
     async maybeFetchSpanTypes(annotations) {
+      // If we encounter a label that's not in our popular list, fetch it individually
       const labelIds = new Set(this.spanTypes.map((label) => label.id))
-      if (annotations.some((item) => !labelIds.has(item.label))) {
-        this.spanTypes = await this.$services.spanType.list(this.projectId)
+      const missingLabelIds = annotations
+        .map(item => item.label)
+        .filter(id => !labelIds.has(id))
+      
+      if (missingLabelIds.length > 0) {
+        // Fetch only the missing labels, not all labels
+        for (const labelId of missingLabelIds) {
+          try {
+            const label = await this.$services.spanType.findById(this.projectId, labelId)
+            this.spanTypes.push(label)
+          } catch (e) {
+            console.warn(`Failed to fetch label ${labelId}`, e)
+          }
+        }
       }
     },
 

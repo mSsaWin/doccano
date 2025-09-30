@@ -1,7 +1,8 @@
 import { LabelItem } from '~/domain/models/label/label'
+import { LabelListOptions } from '~/repositories/label/apiLabelRepository'
 
 export interface LabelRepository {
-  list(projectId: string): Promise<LabelItem[]>
+  list(projectId: string, options?: LabelListOptions): Promise<LabelItem[]>
 
   findById(projectId: string, labelId: number): Promise<LabelItem>
 

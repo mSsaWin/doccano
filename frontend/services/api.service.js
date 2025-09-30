@@ -5,8 +5,51 @@ axios.defaults.xsrfHeaderName = 'X-CSRFToken'
 class ApiService {
   constructor() {
     this.instance = axios.create({
-      baseURL: process.env.baseUrl
+      baseURL: process.env.API_URL + process.env.baseUrl
     })
+    
+    // Add request interceptor to include auth token
+    this.instance.interceptors.request.use(
+      (config) => {
+        const token = this.getAuthToken()
+        if (token) {
+          config.headers.Authorization = `Token ${token}`
+        }
+        return config
+      },
+      (error) => {
+        return Promise.reject(error)
+      }
+    )
+  }
+
+  getAuthToken() {
+    // Try to get token from localStorage or cookies
+    if (process.client) {
+      return localStorage.getItem('auth_token') || this.getCookie('auth_token')
+    }
+    return null
+  }
+
+  getCookie(name) {
+    if (process.client) {
+      const value = `; ${document.cookie}`
+      const parts = value.split(`; ${name}=`)
+      if (parts.length === 2) return parts.pop().split(';').shift()
+    }
+    return null
+  }
+
+  setAuthToken(token) {
+    if (process.client) {
+      localStorage.setItem('auth_token', token)
+    }
+  }
+
+  clearAuthToken() {
+    if (process.client) {
+      localStorage.removeItem('auth_token')
+    }
   }
 
   request(method, url, data = {}, config = {}) {

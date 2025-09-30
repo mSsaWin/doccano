@@ -258,6 +258,8 @@ MEDIA_URL = "/media/"
 DJANGO_DRF_FILEPOND_UPLOAD_TMP = path.join(BASE_DIR, "filepond-temp-uploads")
 DJANGO_DRF_FILEPOND_FILE_STORE_PATH = MEDIA_ROOT
 
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
+
 # File upload setting
 MAX_UPLOAD_SIZE = env.int("MAX_UPLOAD_SIZE", pow(1024, 3))  # default: 1GB per a file
 ENABLE_FILE_TYPE_CHECK = env.bool("ENABLE_FILE_TYPE_CHECK", False)

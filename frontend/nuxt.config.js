@@ -26,7 +26,8 @@ export default {
   },
 
   env: {
-    baseUrl: '/v1'
+    baseUrl: '/v1',
+    API_URL: 'http://localhost:8000'
   },
 
   /*

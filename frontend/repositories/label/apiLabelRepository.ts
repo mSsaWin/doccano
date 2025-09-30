@@ -24,13 +24,48 @@ function toPayload(item: LabelItem): { [key: string]: any } {
   }
 }
 
+export interface LabelListOptions {
+  limit?: number
+  offset?: number
+  search?: string
+  ordering?: string
+  no_page?: boolean
+}
+
 export class APILabelRepository implements LabelRepository {
   constructor(private readonly baseUrl = 'label', private readonly request = ApiService) {}
 
-  async list(projectId: string): Promise<LabelItem[]> {
+  async list(projectId: string, options?: LabelListOptions): Promise<LabelItem[]> {
     const url = `/projects/${projectId}/${this.baseUrl}s`
-    const response = await this.request.get(url)
+    const params: any = {}
+    
+    if (options) {
+      if (options.limit !== undefined) params.limit = options.limit
+      if (options.offset !== undefined) params.offset = options.offset
+      if (options.search) params.q = options.search
+      if (options.ordering) params.ordering = options.ordering
+      if (options.no_page) params.no_page = 'true'
+    }
+    
+    const response = await this.request.get(url, { params })
+    
+    // Handle paginated response
+    if (response.data.results) {
+      return response.data.results.map((item: { [key: string]: any }) => toModel(item))
+    }
+    
+    // Handle non-paginated response
     return response.data.map((item: { [key: string]: any }) => toModel(item))
+  }
+  
+  async listPopular(projectId: string, limit: number = 50): Promise<LabelItem[]> {
+    const url = `/projects/${projectId}/${this.baseUrl}s/popular`
+    const response = await this.request.get(url, { params: { limit } })
+    return response.data.map((item: { [key: string]: any }) => toModel(item))
+  }
+  
+  async search(projectId: string, query: string, limit: number = 50): Promise<LabelItem[]> {
+    return await this.list(projectId, { search: query, limit, ordering: '-usage_count,text' })
   }
 
   async findById(projectId: string, labelId: number): Promise<LabelItem> {
@@ -75,5 +110,9 @@ export class APILabelRepository implements LabelRepository {
         throw new Error('Text field is required')
       }
     }
+  }
+  
+  async listAll(projectId: string): Promise<LabelItem[]> {
+    return await this.list(projectId, { no_page: true })
   }
 }

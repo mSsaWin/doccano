@@ -26,6 +26,8 @@
             :labels="labels"
             :annotations="teacherList"
             :single-label="project.singleClassClassification"
+            :project-id="project.id"
+            :label-service="$services.categoryType"
             @add="annotateLabel(project.id, example.id, $event)"
             @remove="removeTeacher(project.id, example.id, $event)"
           />
@@ -88,10 +90,13 @@ export default {
       removeTeacher
     } = useTeacherList(app.$repositories.category)
     const enableAutoLabeling = ref(false)
-    const { state: labelState, getLabelList, shortKeys } = useLabelList(app.$services.categoryType)
+    const { state: labelState, getPopularLabels, shortKeys } = useLabelList(
+      app.$services.categoryType
+    )
     const labelComponent = ref('label-group')
 
-    getLabelList(projectId)
+    // Load ONLY popular labels - no background loading of all labels
+    getPopularLabels(projectId, 200)
     getProjectById(projectId)
     updateProgress(projectId)
 
@@ -110,7 +115,8 @@ export default {
     })
     watch(query, fetch)
     watch(enableAutoLabeling, async (val) => {
-      if (val && !exampleState.example.isConfirmed) {
+      if (val && exampleState.example && exampleState.example.id 
+      && !exampleState.example.isConfirmed) {
         await autoLabel(exampleState.example.id)
         await getTeacherList(exampleState.example.id)
       }

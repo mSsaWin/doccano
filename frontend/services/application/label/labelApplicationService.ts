@@ -2,13 +2,32 @@ import { LabelDTO } from './labelData'
 import { CreateLabelCommand } from './labelCommand'
 import { LabelRepository } from '~/domain/models/label/labelRepository'
 import { LabelItem } from '~/domain/models/label/label'
+import { LabelListOptions } from '~/repositories/label/apiLabelRepository'
 
 export class LabelApplicationService {
   constructor(private readonly repository: LabelRepository) {}
 
-  public async list(id: string): Promise<LabelDTO[]> {
-    const items = await this.repository.list(id)
+  public async list(id: string, options?: LabelListOptions): Promise<LabelDTO[]> {
+    const items = await this.repository.list(id, options)
     return items.map((item) => new LabelDTO(item))
+  }
+  
+  public async listAll(id: string): Promise<LabelDTO[]> {
+    const items = await (this.repository as any).listAll(id)
+    return items.map((item: LabelItem) => new LabelDTO(item))
+  }
+  
+  public async listPopular(id: string, limit: number = 50): Promise<LabelDTO[]> {
+    const items = await (this.repository as any).listPopular(id, limit)
+    return items.map((item: LabelItem) => new LabelDTO(item))
+  }
+  
+  public async search(id: string, query: string, limit: number = 50): Promise<LabelDTO[]> {
+    if (!query || query.trim() === '') {
+      return this.listPopular(id, limit)
+    }
+    const items = await (this.repository as any).search(id, query, limit)
+    return items.map((item: LabelItem) => new LabelDTO(item))
   }
 
   public async findById(projectId: string, labelId: number): Promise<LabelDTO> {

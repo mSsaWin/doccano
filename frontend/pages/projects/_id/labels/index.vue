@@ -163,7 +163,8 @@ export default Vue.extend({
   methods: {
     async list() {
       this.isLoading = true
-      this.items = await this.service.list(this.projectId)
+      // Load all labels without pagination for this management page
+      this.items = await this.service.listAll(this.projectId)
       this.isLoading = false
     },
 

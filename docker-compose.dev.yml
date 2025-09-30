@@ -1,0 +1,133 @@
+version: "3.7"
+
+services:
+  # PostgreSQL database
+  postgres:
+    image: postgres:13.3-alpine
+    environment:
+      POSTGRES_USER: doccano
+      POSTGRES_PASSWORD: doccano
+      POSTGRES_DB: doccano
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    networks:
+      - doccano-network
+
+  # Redis for Celery broker
+  redis:
+    image: redis:6.2-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - doccano-network
+
+  # Backend Django application with hot reload
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dev
+    volumes:
+      - ./backend:/app/backend
+      - backend_media:/app/backend/media
+      - backend_static:/app/backend/staticfiles
+      - backend_temp:/app/backend/filepond-temp-uploads
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=True
+      - DJANGO_SETTINGS_MODULE=config.settings.development
+      - DATABASE_URL=postgresql://doccano:doccano@postgres:5432/doccano?sslmode=disable
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+      - CORS_ORIGIN_ALLOW_ALL=True
+      - CSRF_TRUSTED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+      - DATABASE_CONN_MAX_AGE=0
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - doccano-network
+    command: >
+      sh -c "
+        python manage.py wait_for_db &&
+        python manage.py migrate &&
+        python manage.py create_roles &&
+        python manage.py runserver 0.0.0.0:8000
+      "
+
+  # Celery worker
+  celery:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dev
+    volumes:
+      - ./backend:/app/backend
+      - backend_media:/app/backend/media
+      - backend_temp:/app/backend/filepond-temp-uploads
+    environment:
+      - DEBUG=True
+      - DJANGO_SETTINGS_MODULE=config.settings.development
+      - DATABASE_URL=postgresql://doccano:doccano@postgres:5432/doccano?sslmode=disable
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - DATABASE_CONN_MAX_AGE=0
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - doccano-network
+    command: celery -A config worker --loglevel=info --reload
+
+  # Flower for monitoring Celery
+  flower:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dev
+    volumes:
+      - ./backend:/app/backend
+    ports:
+      - "5555:5555"
+    environment:
+      - DEBUG=True
+      - DJANGO_SETTINGS_MODULE=config.settings.development
+      - DATABASE_URL=postgresql://doccano:doccano@postgres:5432/doccano?sslmode=disable
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - DATABASE_CONN_MAX_AGE=0
+    depends_on:
+      - redis
+    networks:
+      - doccano-network
+    command: celery -A config flower --port=5555
+
+  # Frontend Nuxt.js application with hot reload
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - API_URL=http://localhost:8000
+    depends_on:
+      - backend
+    networks:
+      - doccano-network
+    command: yarn dev
+
+volumes:
+  postgres_data:
+  backend_media:
+  backend_static:
+  backend_temp:
+
+networks:
+  doccano-network:
+    driver: bridge

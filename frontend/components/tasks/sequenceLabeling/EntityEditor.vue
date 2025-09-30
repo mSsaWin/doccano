@@ -23,6 +23,8 @@
       :y="y"
       :selected-label="currentLabel"
       :labels="entityLabels"
+      :project-id="projectId"
+      :label-service="labelService"
       @close="cleanUp"
       @click:label="addOrUpdateEntity"
     />
@@ -32,6 +34,8 @@
       :y="y"
       :selected-label="currentRelationLabel"
       :labels="relationLabels"
+      :project-id="projectId"
+      :label-service="relationLabelService"
       @close="cleanUp"
       @click:label="addOrUpdateRelation"
     />
@@ -101,6 +105,21 @@ export default Vue.extend({
     relationMode: {
       type: Boolean,
       default: false
+    },
+    projectId: {
+      type: String,
+      required: false,
+      default: null
+    },
+    labelService: {
+      type: Object,
+      required: false,
+      default: null
+    },
+    relationLabelService: {
+      type: Object,
+      required: false,
+      default: null
     }
   },
 

@@ -3,6 +3,8 @@
     v-if="singleLabel"
     :annotations="annotations"
     :labels="labels"
+    :project-id="projectId"
+    :label-service="labelService"
     @add="$emit('add', $event)"
     @remove="$emit('remove', $event)"
   />
@@ -10,6 +12,8 @@
     v-else
     :annotations="annotations"
     :labels="labels"
+    :project-id="projectId"
+    :label-service="labelService"
     @add="$emit('add', $event)"
     @remove="$emit('remove', $event)"
   />
@@ -40,6 +44,16 @@ export default {
       type: Boolean,
       default: false,
       required: true
+    },
+    projectId: {
+      type: String,
+      required: false,
+      default: null
+    },
+    labelService: {
+      type: Object,
+      required: false,
+      default: null
     }
   }
 }

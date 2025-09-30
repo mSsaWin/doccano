@@ -1,0 +1,49 @@
+ARG PYTHON_VERSION="3.8.13-slim-bullseye"
+FROM python:${PYTHON_VERSION}
+
+# Install system dependencies
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+    netcat=1.* \
+    libpq-dev=13.* \
+    unixodbc-dev=2.* \
+    g++=4:* \
+    libssl-dev=1.* \
+    curl \
+    git \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
+# Install pip and dependencies
+RUN pip install -U --no-cache-dir pip==22.2.2
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements and install dependencies
+COPY backend/pyproject.toml backend/poetry.lock ./
+
+# Generate requirements.txt from poetry.lock and install
+RUN pip install poetry==1.5.1 \
+ && poetry export --without-hashes -o requirements.txt \
+ && echo "psycopg2-binary==2.8.6" >> requirements.txt \
+ && pip install --no-cache-dir -r requirements.txt \
+ && rm requirements.txt
+
+# Copy backend code
+COPY backend/ ./backend/
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Create necessary directories
+RUN mkdir -p backend/media backend/staticfiles backend/filepond-temp-uploads
+
+# Expose port
+EXPOSE 8000
+
+# Default command
+WORKDIR /app/backend
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

@@ -11,12 +11,12 @@ from examples.assignment.workload import WorkloadAllocation
 from examples.models import Assignment
 from examples.serializers import AssignmentSerializer
 from projects.models import Project
-from projects.permissions import IsProjectAdmin, IsProjectStaffAndReadOnly
+from projects.permissions import IsProjectAdmin, IsProjectMember
 
 
 class AssignmentList(generics.ListCreateAPIView):
     serializer_class = AssignmentSerializer
-    permission_classes = [IsAuthenticated & (IsProjectAdmin | IsProjectStaffAndReadOnly)]
+    permission_classes = [IsAuthenticated & IsProjectMember]
     filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
     ordering_fields = ("created_at", "updated_at")
     model = Assignment
@@ -37,7 +37,7 @@ class AssignmentDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Assignment.objects.all()
     serializer_class = AssignmentSerializer
     lookup_url_kwarg = "assignment_id"
-    permission_classes = [IsAuthenticated & (IsProjectAdmin | IsProjectStaffAndReadOnly)]
+    permission_classes = [IsAuthenticated & IsProjectMember]
 
 
 class ResetAssignment(APIView):
